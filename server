@@ -1,0 +1,76 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#define SA struct sockaddr
+
+void *manipulate_data(void *client_socket) 
+{
+    char buffer[1024];
+    int new_socket = ((int) client_socket);
+
+    recv(new_socket, buffer, sizeof(buffer), 0);
+    strcat(buffer, " from server xyz");
+    send(new_socket, buffer, strlen(buffer), 0);
+    close(new_socket);
+    pthread_exit(NULL);
+}
+
+int main() 
+{
+    int server_socket, client_socket, client_len;
+    struct sockaddr_in server_address, client_address;
+    pthread_t tid;
+
+    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_socket == -1) 
+    {
+        printf("socket creation failed...\n");
+        exit(0);
+    }
+    
+    else
+        printf("Socket successfully created..\n");
+
+    bzero(&server_address, sizeof(server_address));
+
+    server_address.sin_family = AF_INET;
+    server_address.sin_addr.s_addr = INADDR_ANY;
+    server_address.sin_port = htons(8080);
+
+    if ((bind(server_socket, (SA*)&server_address, sizeof(server_address))) != 0) {
+        printf("socket bind failed...\n");
+        exit(0);
+    }
+    else
+        printf("Socket successfully binded..\n");
+
+    if ((listen(server_socket, 5)) != 0) {
+        printf("Listen failed...\n");
+        exit(0);
+    }
+    else
+        printf("Server listening..\n");
+
+    while (1) {
+        client_len = sizeof(client_address);
+        client_socket = accept(server_socket, (SA*) &client_address, &client_len);
+
+    if (client_socket < 0) {
+        printf("server accept failed...\n");
+        exit(0);
+    }
+
+    else{
+        printf("server accept the client...\n");
+        pthread_create(&tid, NULL, manipulate_data, &client_socket);
+    }
+
+    }
+
+    close(server_socket);
+    return 0;
+}
